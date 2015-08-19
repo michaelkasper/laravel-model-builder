@@ -1,6 +1,6 @@
 <?php
 
-namespace Jimbolino\Laravel\ModelBuilder;
+namespace Kasper\Laravel\ModelBuilder\Utilities;
 
 /**
  * Class Relations, manages all relations of one model.
@@ -13,10 +13,8 @@ class Relations
     private $describes = [];
     private $foreignKeysByTable = [];
     private $prefix = '';
-
     // temporary
     private $manyToMany = [];
-
     /**
      * @var Relation[]
      */
@@ -32,22 +30,22 @@ class Relations
     public function __construct($localTable, $foreignKeys, $describes, $foreignKeysByTable, $prefix)
     {
         // save
-        $this->localTable = $localTable;
-        $this->foreignKeys = $foreignKeys;
-        $this->describes = $describes;
+        $this->localTable         = $localTable;
+        $this->foreignKeys        = $foreignKeys;
+        $this->describes          = $describes;
         $this->foreignKeysByTable = $foreignKeysByTable;
-        $this->prefix = $prefix;
+        $this->prefix             = $prefix;
 
         $remoteField = '';
         $remoteTable = '';
-        $localField = '';
+        $localField  = '';
 
         // do local keys
         foreach ($foreignKeys['local'] as $foreignKey) {
-            $type = $this->findType($foreignKey, false);
-            $remoteField = $foreignKey->REFERENCED_COLUMN_NAME;
-            $remoteTable = $foreignKey->REFERENCED_TABLE_NAME;
-            $localField = $foreignKey->COLUMN_NAME;
+            $type              = $this->findType($foreignKey, false);
+            $remoteField       = $foreignKey->REFERENCED_COLUMN_NAME;
+            $remoteTable       = $foreignKey->REFERENCED_TABLE_NAME;
+            $localField        = $foreignKey->COLUMN_NAME;
             $this->relations[] = new Relation($type, $remoteField, $remoteTable, $localField, $prefix);
         }
 
@@ -58,15 +56,15 @@ class Relations
                 $this->manyToMany[] = $foreignKey;
                 continue;
             }
-            $remoteField = $foreignKey->COLUMN_NAME;
-            $remoteTable = $foreignKey->TABLE_NAME;
-            $localField = $foreignKey->REFERENCED_COLUMN_NAME;
+            $remoteField       = $foreignKey->COLUMN_NAME;
+            $remoteTable       = $foreignKey->TABLE_NAME;
+            $localField        = $foreignKey->REFERENCED_COLUMN_NAME;
             $this->relations[] = new Relation($type, $remoteField, $remoteTable, $localField, $prefix);
         }
 
         // many to many last
         foreach ($this->manyToMany as $foreignKey) {
-            $fields = $this->describes[$foreignKey->TABLE_NAME];
+            $fields    = $this->describes[$foreignKey->TABLE_NAME];
             $relations = $this->foreignKeysByTable[$foreignKey->TABLE_NAME];
             foreach ($fields as $field) {
                 if ($field->Key == 'PRI') {
@@ -82,10 +80,18 @@ class Relations
                     }
                 }
             }
-            $type = $this->findType($foreignKey, true);
-            $junctionTable = $foreignKey->TABLE_NAME;
+            $type              = $this->findType($foreignKey, true);
+            $junctionTable     = $foreignKey->TABLE_NAME;
             $this->relations[] = new Relation($type, $remoteField, $remoteTable, $localField, $prefix, $junctionTable);
         }
+    }
+
+    /**
+     * @return Relation[]
+     */
+    public function getRelations()
+    {
+        return $this->relations;
     }
 
     /**
@@ -143,7 +149,7 @@ class Relations
     protected function isBelongsToMany($foreignKey)
     {
         $remote = $this->describes[$foreignKey->TABLE_NAME];
-        $count = 0;
+        $count  = 0;
         foreach ($remote as $field) {
             if ($field->Key == 'PRI') {
                 $count++;

@@ -1,6 +1,6 @@
 <?php
 
-namespace Jimbolino\Laravel\ModelBuilder;
+namespace Kasper\Laravel\ModelBuilder\Utilities;
 
 /**
  * Class NamingConvention

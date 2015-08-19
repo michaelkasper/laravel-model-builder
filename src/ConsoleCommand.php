@@ -1,15 +1,33 @@
 <?php
 
-namespace Jimbolino\Laravel\ModelBuilder;
+namespace Kasper\Laravel\ModelBuilder;
 
-use Illuminate\Routing\Controller;
+use Illuminate\Console\Command;
 
 /**
- * Class ModelGenerator5, Laravel 5 version for the ModelGenerator.
+ * Class ConsoleCommand, Laravel 5 version for the ModelGenerator.
  */
-class ModelGenerator5 extends Controller
+class ConsoleCommand extends Command
 {
-    public function start()
+    /**
+     * The name and signature of the console command.
+     *
+     * @var string
+     */
+    protected $signature = 'build-models';
+    /**
+     * The console command description.
+     *
+     * @var string
+     */
+    protected $description = 'Generate Eloquent Models and Base Models';
+
+    /**
+     * Execute the console command.
+     *
+     * @return mixed
+     */
+    public function handle()
     {
         // This is the model that all your others will extend
         $baseModel = '\Illuminate\Database\Eloquent\Model'; // default laravel 5

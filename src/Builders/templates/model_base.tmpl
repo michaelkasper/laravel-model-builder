@@ -1,0 +1,22 @@
+<?php
+
+namespace {{namespace}};
+
+use {{base_class}};
+
+/**
+ * Class {{class_name}}
+ *
+ * Eloquent base class to describe the {{table_name}} table
+ *
+{{fields}} *
+ **/
+
+class {{class_name}} extends {{base_class_name}}
+{
+    protected $table = '{{table_name}}';
+    {{content}}
+    {{accessor_methods}}
+    {{relation_methods}}
+}
+

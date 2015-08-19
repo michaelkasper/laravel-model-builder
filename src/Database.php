@@ -1,8 +1,9 @@
 <?php
 
-namespace Jimbolino\Laravel\ModelBuilder;
+namespace Kasper\Laravel\ModelBuilder;
 
 use DB;
+use Kasper\Laravel\ModelBuilder\Utilities\ArrayHelpers;
 
 /**
  * Class Database, does all queries.

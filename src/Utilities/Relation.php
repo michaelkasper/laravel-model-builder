@@ -1,6 +1,6 @@
 <?php
 
-namespace Jimbolino\Laravel\ModelBuilder;
+namespace Kasper\Laravel\ModelBuilder\Utilities;
 
 /**
  * Class Relation, defines one single Relation entry.
@@ -12,6 +12,54 @@ class Relation
     protected $localField;
     protected $remoteFunction;
     protected $remoteClass;
+
+    /**
+     * @return mixed
+     */
+    public function getType()
+    {
+        return $this->type;
+    }
+
+    /**
+     * @return mixed
+     */
+    public function getRemoteField()
+    {
+        return $this->remoteField;
+    }
+
+    /**
+     * @return mixed
+     */
+    public function getLocalField()
+    {
+        return $this->localField;
+    }
+
+    /**
+     * @return string
+     */
+    public function getRemoteFunction()
+    {
+        return $this->remoteFunction;
+    }
+
+    /**
+     * @return mixed
+     */
+    public function getRemoteClass()
+    {
+        return $this->remoteClass;
+    }
+
+    /**
+     * @return string
+     */
+    public function getJunctionTable()
+    {
+        return $this->junctionTable;
+    }
     protected $junctionTable;
 
     /**

@@ -1,8 +1,13 @@
 <?php
 
-namespace Jimbolino\Laravel\ModelBuilder;
+namespace Kasper\Laravel\ModelBuilder;
 
 use Exception;
+use Kasper\Laravel\ModelBuilder\Builders\Builder;
+use Kasper\Laravel\ModelBuilder\Builders\Model;
+use Kasper\Laravel\ModelBuilder\Builders\ModelBase;
+use Kasper\Laravel\ModelBuilder\Utilities\ArrayHelpers;
+use Kasper\Laravel\ModelBuilder\Utilities\StringUtils;
 
 /**
  * Class ModelGenerator.
@@ -13,20 +18,15 @@ use Exception;
  *
  * @author Jimbolino
  *
- * @since 02-2015
+ * @since  02-2015
  */
 class ModelGenerator
 {
     protected $foreignKeys = [];
-
     protected $junctionTables = [];
-
     protected $tables = [];
-
     protected $views = [];
-
     protected $describes = [];
-
     /**
      * There MUST NOT be a hard limit on line length; the soft limit MUST be 120 characters;
      * https://github.com/php-fig/fig-standards/blob/master/accepted/PSR-2-coding-style-guide.md#1-overview.
@@ -34,13 +34,9 @@ class ModelGenerator
      * @var int
      */
     public static $lineWrap = 120;
-
     protected $prefix = '';
-
     protected $namespace = 'app';
-
     protected $path = '';
-
     protected $baseModel = 'Eloquent';
 
     /**
@@ -62,9 +58,9 @@ class ModelGenerator
         }
 
         $this->baseModel = $baseModel;
-        $this->path = $path;
+        $this->path      = $path;
         $this->namespace = $namespace;
-        $this->prefix = $prefix;
+        $this->prefix    = $prefix;
     }
 
     /**
@@ -74,12 +70,11 @@ class ModelGenerator
      */
     public function start()
     {
-        echo '<pre>';
         $tablesAndViews = Database::showTables($this->prefix);
-        $this->tables = $tablesAndViews['tables'];
-        $this->views = $tablesAndViews['views'];
+        $this->tables   = $tablesAndViews['tables'];
+        $this->views    = $tablesAndViews['views'];
 
-        $this->foreignKeys['all'] = Database::getAllForeignKeys();
+        $this->foreignKeys['all']     = Database::getAllForeignKeys();
         $this->foreignKeys['ordered'] = $this->getAllForeignKeysOrderedByTable();
 
         foreach ($this->tables as $key => $table) {
@@ -93,21 +88,40 @@ class ModelGenerator
         unset($table);
 
         foreach ($this->tables as $table) {
-            $model = new Model();
-            $model->buildModel(
-                $table,
-                $this->baseModel,
-                $this->describes,
-                $this->foreignKeys,
-                $this->namespace,
-                $this->prefix
-            );
+            try {
+                $modelBase = new ModelBase();
+                $modelBase->buildModel(
+                    $table,
+                    $this->baseModel,
+                    $this->describes,
+                    $this->foreignKeys,
+                    $this->namespace,
+                    $this->prefix
+                );
+                $modelBase->createModel();
 
-            $model->createModel();
+                $model = new Model();
+                $model->buildModel(
+                    $table,
+                    $modelBase->getNamespace() . "\\" . $modelBase->getClass(),
+                    $this->describes,
+                    $this->foreignKeys,
+                    $this->namespace,
+                    $this->prefix
+                );
+                $model->createModel();
+            } catch (\Exception $e) {
+                print_r($e->getMessage() . LF);
+                print_r($e->getFile() . LF);
+                print_r($e->getLine() . LF);
+                exit();
+            }
 
-            $result = $this->writeFile($table, $model);
+            $result = $this->writeFile($table, $modelBase, $this->path . "/Base");
+            echo 'file written: Base' . $result['filename'] . ' - ' . $result['result'] . ' bytes' . LF;
 
-            echo 'file written: '.$result['filename'].' - '.$result['result'].' bytes'.LF;
+            $result = $this->writeFile($table, $model, $this->path);
+            echo 'file written: ' . $result['filename'] . ' - ' . $result['result'] . ' bytes' . LF;
         }
         echo 'done';
     }
@@ -115,7 +129,7 @@ class ModelGenerator
     /**
      * Detect many to many tables.
      *
-     * @param $table
+     * @param      $table
      * @param bool $checkForeignKey
      *
      * @return bool
@@ -149,29 +163,29 @@ class ModelGenerator
     /**
      * Write the actual TableName.php file.
      *
-     * @param $table
-     * @param Model $model
+     * @param         $table
+     * @param Builder $model
      *
      * @throws Exception
      *
      * @return array
      */
-    protected function writeFile($table, $model)
+    protected function writeFile($table, $model, $destination)
     {
-        $filename = StringUtils::prettifyTableName($table, $this->prefix).'.php';
+        $filename = StringUtils::prettifyTableName($table, $this->prefix) . '.php';
 
-        if (!is_dir($this->path)) {
+        if (!is_dir($destination)) {
             $oldUMask = umask(0);
-            echo 'creating path: '.$this->path.LF;
-            mkdir($this->path, 0777, true);
+            echo 'creating path: ' . $destination . LF;
+            mkdir($destination, 0777, true);
             umask($oldUMask);
-            if (!is_dir($this->path)) {
-                throw new Exception('dir '.$this->path.' could not be created');
+            if (!is_dir($destination)) {
+                throw new Exception('dir ' . $destination . ' could not be created');
             }
         }
-        $result = file_put_contents($this->path.'/'.$filename, $model);
+        $result = file_put_contents($destination . '/' . $filename, $model);
 
-        return ['filename' => $this->path.'/'.$filename, 'result' => $result];
+        return ['filename' => $destination . '/' . $filename, 'result' => $result];
     }
 
     /**
@@ -187,14 +201,14 @@ class ModelGenerator
 
         // get unsigned
         $result['unsigned'] = false;
-        $type = explode(' ', $type);
+        $type               = explode(' ', $type);
 
         if (isset($type[1]) && $type[1] === 'unsigned') {
             $result['unsigned'] = true;
         }
 
         // int(11) + varchar(255) = $type = varchar, $size = 255
-        $type = explode('(', $type[0]);
+        $type           = explode('(', $type[0]);
         $result['type'] = $type[0];
         if (isset($type[1])) {
             $result['size'] = intval($type[1]);
