@@ -1,5 +1,14 @@
 
+    /**
+     * @return {{return_type}}
+     */
     public function get{{method_name}}()
     {
-        return $this->{{type}}('{{related_table}}', '{{local_field}}', '{{remote_field}}');
+        if ($this->relationLoaded("{{property_name}}")) {
+            return $this->relations["{{property_name}}"];
+        }
+
+        return $this->relations["{{property_name}}"] = $this->{{type}}('{{related_class}}', '{{local_field}}', '{{remote_field}}')->getResults();
     }
+
+    protected function {{property_name}}(){ return $this->get{{method_name}}(); }

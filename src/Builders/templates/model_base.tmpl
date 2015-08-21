@@ -2,7 +2,7 @@
 
 namespace {{namespace}};
 
-use {{base_class}};
+use {{base_class}} as BaseModel;
 
 /**
  * Class {{class_name}}
@@ -12,7 +12,7 @@ use {{base_class}};
 {{fields}} *
  **/
 
-class {{class_name}} extends {{base_class_name}}
+class {{class_name}} extends BaseModel
 {
     protected $table = '{{table_name}}';
     {{content}}

@@ -2,7 +2,11 @@
 
 namespace Kasper\Laravel\ModelBuilder\Builders;
 
+use \Exception;
+use Kasper\Laravel\ModelBuilder\ModelGenerator;
+use Kasper\Laravel\ModelBuilder\Utilities\Relations;
 use Kasper\Laravel\ModelBuilder\Utilities\StringUtils;
+use \ReflectionClass;
 
 /**
  * Class Model, a representation of one Laravel model.
@@ -23,7 +27,6 @@ class Model extends Builder
     {
         $this->table          = StringUtils::removePrefix($table, $prefix);
         $this->baseModel      = $baseModel;
-        $this->baseModelClass = $this->getClassNameFromNamespace($this->baseModel);
         $this->class          = StringUtils::prettifyTableName($table, $prefix);
 
         if (!empty($namespace)) {

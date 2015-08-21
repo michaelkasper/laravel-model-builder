@@ -14,7 +14,7 @@ class ConsoleCommand extends Command
      *
      * @var string
      */
-    protected $signature = 'build-models';
+    protected $signature = 'build-models {--namespace=App : The Base namespace for the Models } {--output= : Where the Models will be saved }';
     /**
      * The console command description.
      *
@@ -35,8 +35,16 @@ class ConsoleCommand extends Command
         // This is the path where we will store your new models
         $path = storage_path('models');
 
+        if ($this->option('output')) {
+            $path =  $this->option('output');
+        }
+
         // The namespace of the models
         $namespace = 'App'; // default namespace for clean laravel 5 installation
+
+        if ($this->option('namespace')) {
+            $namespace = $this->option('namespace');
+        }
 
         // get the prefix from the config
         $prefix = Database::getTablePrefix();

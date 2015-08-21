@@ -118,10 +118,15 @@ class ModelGenerator
             }
 
             $result = $this->writeFile($table, $modelBase, $this->path . "/Base");
-            echo 'file written: Base' . $result['filename'] . ' - ' . $result['result'] . ' bytes' . LF;
-
-            $result = $this->writeFile($table, $model, $this->path);
             echo 'file written: ' . $result['filename'] . ' - ' . $result['result'] . ' bytes' . LF;
+
+            $filename = StringUtils::prettifyTableName($table, $this->prefix) . '.php';
+            if (!file_exists("{$this->path}/$filename")) {
+                $result = $this->writeFile($table, $model, $this->path);
+                echo 'file written: ' . $result['filename'] . ' - ' . $result['result'] . ' bytes' . LF;
+            } else {
+                echo 'file already exist: ' . $result['filename'] . ' - ' . $result['result'] . ' bytes' . LF;
+            }
         }
         echo 'done';
     }

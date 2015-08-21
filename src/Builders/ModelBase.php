@@ -4,7 +4,6 @@ namespace Kasper\Laravel\ModelBuilder\Builders;
 
 use \Exception;
 use ICanBoogie\Inflector;
-use Kasper\Laravel\ModelBuilder\ModelGenerator;
 use Kasper\Laravel\ModelBuilder\Utilities\Relations;
 use Kasper\Laravel\ModelBuilder\Utilities\StringUtils;
 use \ReflectionClass;
@@ -14,6 +13,8 @@ use \ReflectionClass;
  */
 class ModelBase extends Builder
 {
+    private $parentNamespace;
+
     /**
      * First build the model.
      *
@@ -28,13 +29,13 @@ class ModelBase extends Builder
     {
         $this->table           = StringUtils::removePrefix($table, $prefix);
         $this->baseModel       = $baseModel;
-        $this->baseModelClass  = $this->getClassNameFromNamespace($this->baseModel);
-        $this->class           = StringUtils::prettifyTableName($table, $prefix);
+        $this->class           = "Base" . StringUtils::prettifyTableName($table, $prefix);
         $this->timestampFields = $this->getTimestampFields($this->baseModel);
         $this->foreignKeys     = $this->filterAndSeparateForeignKeys($foreignKeys['all'], $table);
 
         if (!empty($namespace)) {
-            $this->namespace = "$namespace\Base";
+            $this->parentNamespace = "$namespace";
+            $this->namespace       = "$namespace\Base";
         }
 
         $foreignKeysByTable = $foreignKeys['ordered'];
@@ -67,7 +68,7 @@ class ModelBase extends Builder
             }
 
             $this->fillable[]            = $field->Field;
-            $this->fields[$field->Field] = $field->Type;
+            $this->fields[$field->Field] = $this->mysqlDataTypeToPhpDataType($field->Type);
         }
 
         // relations
@@ -112,6 +113,18 @@ class ModelBase extends Builder
         if (!empty($this->hidden)) {
             $content .= $this->generateProperty('protected', 'hidden', 'array(' . StringUtils::implodeAndQuote(', ', $this->hidden) . ')');
         }
+
+        $cast = "";
+        foreach ($this->fields as $field => $fieldInfo) {
+            if ($fieldInfo[0] !== 'string') {
+                $cast .= "'{$field}'=>'{$fieldInfo[0]}', ";
+            }
+        }
+
+        if (!empty($cast)) {
+            $content .= $this->generateProperty('protected', 'cast', 'array(' . trim($cast, ',') . ')', true);
+        }
+
         $this->inject($script, 'content', $content);
 
         $accessors = "";
@@ -125,7 +138,9 @@ class ModelBase extends Builder
 
         $inflector = Inflector::get(Inflector::DEFAULT_LOCALE);
 
-        $relations = ['belongsToMany' => "", 'hasOne' => "", 'belongsTo' => "", 'hasMany' => ""];
+        $relations          = ['belongsToMany' => "", 'hasOne' => "", 'belongsTo' => "", 'hasMany' => ""];
+        $relationProperties = [];
+
         foreach ($this->relations->getRelations() as $relation) {
             $template   = self::TEMPLATE_RELATIONSHIP;
             $methodName = $relation->getRemoteFunction();
@@ -143,24 +158,74 @@ class ModelBase extends Builder
                     break;
             }
 
+            $returnType = "\\{$this->parentNamespace}\\$returnType";
+
+            $propertyName = $inflector->underscore($methodName);
+            if ($this->isReservedWords($propertyName)) {
+                $propertyName .= "_relation";
+            }
+
             $relations[$relation->getType()] .= $this->generatePartial($template, [
                 'method_name'    => ucfirst($methodName),
+                'property_name'  => $propertyName,
                 'type'           => $relation->getType(),
-                'related_table'  => $relation->getRemoteClass(),
+                'related_class'  => $relation->getRemoteClass(),
                 'junction_table' => $relation->getJunctionTable(),
                 'local_field'    => $relation->getLocalField(),
                 'remote_field'   => $relation->getRemoteField(),
+                'return_type'    => $returnType,
             ]);
+
+            $relationProperties[$propertyName] = [$returnType, null];
         }
         $this->inject($script, 'relation_methods', implode(LF . LF . LF, $relations));
 
-        $fields = "";
-        foreach ($this->fields as $field => $type) {
-            $fields .= $this->generatePartial(self::TEMPLATE_FIELD_DECLARATION, [
-                'field_type'  => $type,
-                'table_field' => $field
-            ]);
+        $propertiesMaxLength = 0;
+        $dataTypeMaxLength   = 0;
+        foreach ([
+            $this->fields,
+            $relationProperties,
+        ] as $properties) {
+            $maxLength = max(array_map('strlen', array_keys($properties)));
+            if ($propertiesMaxLength < $maxLength) {
+                $propertiesMaxLength = $maxLength;
+            }
+
+            $maxLength = max(array_map(function ($i) {
+                return strlen($i[0]);
+            }, $properties));
+
+            if ($dataTypeMaxLength < $maxLength) {
+                $dataTypeMaxLength = $maxLength;
+            }
         }
+
+        $gap = 1;
+        if (count($relationProperties) > 0 && count($this->fields) > 0) {
+            $gap = 6;
+        }
+
+        $fields = "";
+        foreach ([
+            self::TEMPLATE_FIELD_DECLARATION    => $this->fields,
+            self::TEMPLATE_RELATION_DECLARATION => $relationProperties,
+        ] as $template => $properties) {
+            foreach ($properties as $property => $fieldInfo) {
+
+                list($fieldType, $fieldDescription) = $fieldInfo;
+                if (empty($fieldDescription)) {
+                    $fieldDescription = "";
+                }
+
+                $fields .= $this->generatePartial($template, [
+                    'pad'               => str_pad("", $gap),
+                    'field_type'        => str_pad($fieldType, $dataTypeMaxLength),
+                    'table_field'       => str_pad($property, $propertiesMaxLength),
+                    'field_description' => $fieldDescription,
+                ]);
+            }
+        }
+
         $this->inject($script, 'fields', $fields);
 
         $this->script = $script;

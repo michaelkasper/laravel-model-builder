@@ -11,6 +11,7 @@ class Builder
     const TEMPLATE_MODEL_BASE = 'model_base.tmpl';
     const TEMPLATE_ACCESSOR = 'accessor.tmpl';
     const TEMPLATE_FIELD_DECLARATION = 'field_declaration.tmpl';
+    const TEMPLATE_RELATION_DECLARATION = 'relation_declaration.tmpl';
     const TEMPLATE_RELATION_MANY = 'relation_many_to_many.tmpl';
     const TEMPLATE_RELATIONSHIP = 'relationship.tmpl';
     const TEMPLATE_PROPERTY = 'property.tmpl';
@@ -60,7 +61,7 @@ class Builder
      */
     public function __toString()
     {
-        return str_replace(LF . LF . LF, '', $this->script);
+        return str_replace(LF . LF . LF, "", $this->script);
     }
 
     /**
@@ -112,10 +113,9 @@ class Builder
     protected function injectStandardVariables(&$script)
     {
         $this->injectVariables($script, [
-            'base_class'      => $this->baseModel,
-            'base_class_name' => $this->baseModelClass,
-            'class_name'      => $this->class,
-            'table_name'      => $this->table
+            'base_class' => $this->baseModel,
+            'class_name' => $this->class,
+            'table_name' => $this->table
         ]);
         return $this;
     }
@@ -157,5 +157,153 @@ class Builder
             $className = $matches[1];
         }
         return $className;
+    }
+
+    protected function mysqlDataTypeToPhpDataType($dataType)
+    {
+        list($mysqlDataType, $mysqlDescription) = explode("(", "$dataType(");
+        $mysqlDescription = trim($mysqlDescription, ")");
+        $mysqlDataType    = strtolower($mysqlDataType);
+        $phpDescription   = "[$dataType] ";
+
+        switch ($mysqlDataType) {
+            case "tinyint":
+            case "smallint":
+            case "mediumint":
+            case "int":
+            case "bigint":
+                $phpDataType = 'int';
+                if ($mysqlDescription == '1') {
+                    $phpDataType = 'bool';
+                } else {
+                    $phpDescription = "[$dataType] $mysqlDescription digits long";
+                }
+                break;
+            case 'float':
+            case 'decimal':
+                $phpDataType = 'float';
+                list($int, $decimal) = explode(",", "$mysqlDescription,");
+                $phpDescription .= "$int digits long";
+                if (!empty($decimal)) {
+                    $phpDescription .= " and $decimal decimal digits long";
+                }
+                break;
+            case 'double':
+                $phpDataType = 'float';
+                break;
+            case 'bit':
+                $phpDataType = 'int';
+                $phpDescription .= "1|0";
+                break;
+            case 'enum':
+            case 'set':
+                $phpDataType = 'string';
+                break;
+            case 'char':
+            case 'varchar':
+            case 'binary':
+            case 'varbinary':
+            case 'tinyblob':
+            case 'blob':
+            case 'mediumblob':
+            case 'longblob':
+            case 'tinytext':
+            case 'text':
+            case 'mediumtext':
+            case 'longtext':
+            case 'date':
+            case 'time':
+            case 'datetime':
+            case 'timestamp':
+            case 'year':
+            case 'geometry':
+            case 'point':
+            case 'linestring':
+            case 'polygon':
+            case 'geometrycollection':
+            case 'multilinestring':
+            case 'multipoint':
+            case 'multipolygon':
+                $phpDataType = 'string';
+                if (!empty($mysqlDescription)) {
+                    if ($mysqlDescription == 1) {
+                        $phpDescription .= "$mysqlDescription character";
+                    } else {
+                        $phpDescription .= "$mysqlDescription characters";
+                    }
+                }
+                break;
+            default:
+                $phpDataType = 'string';
+        }
+
+        return [$phpDataType, $phpDescription];
+    }
+
+    protected function isReservedWords($word)
+    {
+        return in_array(strtolower($word), [
+            "abstract",
+            "and",
+            "array",
+            "as",
+            "break",
+            "case",
+            "catch",
+            "class",
+            "clone",
+            "const",
+            "continue",
+            "declare",
+            "default",
+            "do",
+            "die",
+            "echo",
+            "else",
+            "elseif",
+            "empty",
+            "enddeclare",
+            "endfor",
+            "endforeach",
+            "endif",
+            "endswitch",
+            "endwhile",
+            "eval",
+            "exit",
+            "extends",
+            "final",
+            "for",
+            "foreach",
+            "function",
+            "global",
+            "goto",
+            "if",
+            "implements",
+            "include",
+            "include_once",
+            "interface",
+            "isset",
+            "instanceof",
+            "list",
+            "namespace",
+            "new",
+            "or",
+            "print",
+            "private",
+            "protected",
+            "public",
+            "require",
+            "require_once",
+            "return",
+            "static",
+            "switch",
+            "throw",
+            "try",
+            "unset",
+            "use",
+            "var",
+            "while",
+            "xor"
+        ]);
     }
 }
